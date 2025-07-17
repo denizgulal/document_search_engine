@@ -10,7 +10,7 @@ print(device)
 embed_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
 # Soru-cevap modeli
-model_id = "t5-small"
+model_id = "t5-base"
 tokenizer = AutoTokenizer.from_pretrained(model_id)
 model = AutoModelForSeq2SeqLM.from_pretrained(model_id).to(device)
 
@@ -28,9 +28,10 @@ query_embedding = embed_model.encode(query)
 # Benzerlik skorları ve en iyi 3 chunk
 similarities = cosine_similarity([query_embedding], embeddings)[0]
 top_k = similarities.argsort()[-1:][::-1]
+
 print("Closest chunk indexes:", top_k)
 
-def chunk_to_smaller_pieces(text, max_len=80):
+def chunk_to_smaller_pieces(text, max_len=25):
     token_ids = tokenizer.encode(text, add_special_tokens=False)
     pieces = []
     for i in range(0, len(token_ids), max_len):
@@ -39,8 +40,8 @@ def chunk_to_smaller_pieces(text, max_len=80):
         pieces.append(piece_text)
     return pieces
 
-
-max_context_tokens = 300
+small_chunks = chunk_to_smaller_pieces(chunks[top_k[0]], max_len=25)
+max_context_tokens = 100
 context_chunks = []
 
 for idx in top_k:
@@ -71,7 +72,7 @@ Answer:"""
 inputs = tokenizer(prompt, return_tensors="pt").to(device)
 
 with torch.no_grad():
-    outputs = model.generate(**inputs, max_new_tokens=30, do_sample=False)
+    outputs = model.generate(**inputs, max_new_tokens=60, do_sample=False)
     answer = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
 print("\n🔍 Answer:\n", answer.split("Answer:")[-1].strip())
